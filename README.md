@@ -1,4 +1,4 @@
-# KeyVDB
+# KeyVDB (Under Development)
 
 KeyVDB is a high-performance, in-memory key-value store designed to be a faster alternative to Redis while maintaining full compatibility with the Redis CLI. It aims to provide higher queries per second (QPS) and improved efficiency for demanding applications.
 
