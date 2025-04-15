@@ -13,9 +13,17 @@ type CmdHandler struct{}
 type CommandType string
 
 const (
-	PING = "PING"
-	GET  = "GET"
-	SET  = "SET"
+	PING              = "PING"
+	GET               = "GET"
+	SET               = "SET"
+	GEOADD            = "GEOADD"
+	GEODIST           = "GEODIST"
+	GEORADIUS         = "GEORADIUS"
+	GEORADIUSBYMEMBER = "GEORADIUSBYMEMBER"
+	GEOHASH           = "GEOHASH"
+	GEOPOS            = "GEOPOS"
+	GEOSEARCH         = "GEOSEARCH"
+	GEOSEARCHSTORE    = "GEOSEARCHSTORE"
 )
 
 func NewCmdHandler() *CmdHandler {
@@ -23,20 +31,30 @@ func NewCmdHandler() *CmdHandler {
 }
 
 var store = db.NewStore(db.NewDb())
+var geoDb = db.NewGeoDB()
 
 func (h *CmdHandler) HandleDbCommands(cmd redcon.Command) []byte {
 	parsedCmd := h.parseCommand(cmd)
-	if parsedCmd[0] == PING {
+	SUFF_CMD := CommandType(parsedCmd[0])
+
+	if SUFF_CMD == PING {
 		return h.ping()
 	}
 
-	if parsedCmd[0] == GET {
+	if SUFF_CMD == GET {
 		return h.Get(parsedCmd)
 	}
 
-	if parsedCmd[0] == SET {
+	if SUFF_CMD == SET {
 		return h.Set(parsedCmd)
+	}
 
+	if SUFF_CMD == GEOADD {
+		return h.GeoAdd(parsedCmd)
+	}
+
+	if SUFF_CMD == GEODIST {
+		return h.GEODIST(parsedCmd)
 	}
 
 	return redcon.AppendError(nil, "ERR unknown command")
@@ -78,4 +96,37 @@ func (h *CmdHandler) Set(cmd []string) []byte {
 	}
 	store.Set(key, val, exp)
 	return redcon.AppendOK(nil)
+}
+
+func (h *CmdHandler) GeoAdd(cmd []string) []byte {
+	if len(cmd) < 5 {
+		return redcon.AppendError(nil, "ERR wrong number of arguments for 'geoadd' command")
+	}
+
+	key := cmd[1]
+
+	lat, err := strconv.ParseFloat(cmd[2], 64)
+	if err != nil {
+		return redcon.AppendError(nil, "ERR invalid latitude")
+	}
+
+	lon, err := strconv.ParseFloat(cmd[3], 64)
+	if err != nil {
+		return redcon.AppendError(nil, "ERR invalid longitude")
+	}
+
+	member := cmd[4]
+	geoDb.GeoAdd(key, lon, lat, member)
+	return redcon.AppendOK(nil)
+}
+
+func (h *CmdHandler) GEODIST(cmd []string) []byte {
+	if len(cmd) < 4 {
+		return redcon.AppendError(nil, "ERR wrong number of arguments for 'geodist' command")
+	}
+	key := cmd[1]
+	member1 := cmd[2]
+	member2 := cmd[3]
+	dist := geoDb.GeoDist(key, member1, member2)
+	return redcon.AppendBulkFloat(nil, dist)
 }
